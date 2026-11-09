@@ -1,5 +1,5 @@
 
-name: Fortify on Demand Scan
+name: WebGoat Fortify SAST
 
 on:
   workflow_dispatch:
@@ -10,8 +10,14 @@ permissions:
 
 jobs:
   fortify-scan:
-    name: WebGoat Fortify SAST
     runs-on: ubuntu-latest
+
+    # Common environment for every step
+    env:
+      FOD_URL: https://ams.fortify.com
+      FOD_TENANT: ${{ secrets.FOD_TENANT }}
+      FOD_CLIENT_ID: ${{ secrets.FOD_CLIENT_ID }}
+      FOD_CLIENT_SECRET: ${{ secrets.FOD_CLIENT_SECRET }}
 
     steps:
       - name: Checkout Repository
@@ -23,33 +29,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Verify URL is available
+      - name: Validate Fortify URL
+        shell: bash
+        run: |
+          if [ -z "$FOD_URL" ]; then
+            echo "::error::FOD_URL is missing"
+            exit 1
+          fi
+
+          echo "FOD_URL is configured successfully."
+
+      # Fortify scan
       - name: Fortify on Demand SAST Scan
         uses: fortify/github-action@v3
         env:
-          # FoD connection
-          FOD_URL: ${{ vars.FOD_URL }}
-          FOD_TENANT: ${{ secrets.FOD_TENANT }}
-          FOD_CLIENT_ID: ${{ secrets.FOD_CLIENT_ID }}
-          FOD_CLIENT_SECRET: ${{ secrets.FOD_CLIENT_SECRET }}
-
-          # Application and release
           FOD_RELEASE: webgoat:master
-
-          # Automatically create application/release if missing
           DO_SETUP: 'true'
-
-          # Configure Static Assessment
           SAST_ASSESSMENT_TYPE: Static Assessment
-
-          # Maven packaging
-          PACKAGE_EXTRA_OPTS: "-bt mvn"
-
-          # Run SAST
           DO_SAST_SCAN: 'true'
           DO_WAIT: 'true'
-
-          # Export results to GitHub Security
           DO_SAST_EXPORT: 'true'
-
-          # Pin fcli version
-          FCLI_BOOTSTRAP_VERSION: v3.29.0
+          PACKAGE_EXTRA_OPTS: "-bt mvn"
